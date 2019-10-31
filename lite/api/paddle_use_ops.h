@@ -68,6 +68,7 @@ USE_LITE_OP(pad2d);
 USE_LITE_OP(mul);
 USE_LITE_OP(norm);
 USE_LITE_OP(fake_quantize_moving_average_abs_max);
+USE_LITE_OP(instance_norm);
 USE_LITE_OP(arg_max);
 USE_LITE_OP(dropout);
 USE_LITE_OP(fake_dequantize_max_abs);

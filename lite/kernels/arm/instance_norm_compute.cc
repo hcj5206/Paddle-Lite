@@ -35,6 +35,7 @@ void InstanceNormCompute::Run() {
   auto* var = param.Variance->mutable_data<float>();
 
   int axis = param.begin_norm_axis;
+  axis=2;
   auto matrix_dim = param.X->dims().Flatten2D(axis);
   int left = matrix_dim[0];
   int right = matrix_dim[1];
@@ -58,6 +59,6 @@ REGISTER_LITE_KERNEL(instance_norm,
     .BindInput("Scale", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindInput("Bias", {LiteType::GetTensorTy(TARGET(kARM))})
     .BindOutput("Y", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Mean", {LiteType::GetTensorTy(TARGET(kARM))})
-    .BindOutput("Variance", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("SavedMean", {LiteType::GetTensorTy(TARGET(kARM))})
+    .BindOutput("SavedVariance", {LiteType::GetTensorTy(TARGET(kARM))})
     .Finalize();

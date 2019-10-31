@@ -42,7 +42,7 @@ void InstanceNormComputeRef(const operators::InstanceNormParam& param) {
   auto* out_data = y->mutable_data<float>();
   auto* mean_data = mean_tensor->mutable_data<float>();
   auto* var_data = var_tensor->mutable_data<float>();
-
+  begin_norm_axis=2;
   auto matrix_dim = x->dims().Flatten2D(begin_norm_axis);
   int batch_size = matrix_dim[0];
   int feature_size = matrix_dim[1];
