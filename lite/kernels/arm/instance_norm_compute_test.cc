@@ -64,15 +64,58 @@ void InstanceNormComputeRef(const operators::InstanceNormParam& param) {
     for (int j = start; j < end; ++j) {
       out_data[j] = (x_data[j] - mean) / var;
       if (scale_data) {
-        out_data[j] *= scale_data[j - start];
+        out_data[j] *= scale_data[i];
       }
       if (bias_data) {
-        out_data[j] += bias_data[j - start];
+        out_data[j] += bias_data[i];
       }
     }
   }
 }
-
+//////////////////hcj + 20191027 for test
+//字符串转化
+template <class Type>
+Type stringToNum1(const std::string& str)
+{
+    std::istringstream iss(str);
+    Type num;
+    iss >> num;
+    return num;
+}
+std::string Read_Str1(std::string filepath)
+{
+    std::ifstream infile;
+    infile.open(filepath);
+    //打开失败，路径不正确
+    if(!infile)
+        std::cout << "Open File Fail!" << std::endl;
+    //读取文本内容到字符串
+    std::string readStr((std::istreambuf_iterator<char>(infile)),  std::istreambuf_iterator<char>());
+    return readStr;
+}
+int Write_Str1(std::string str,std::string filepath)
+{
+    std::ofstream outfile;
+    outfile.open(filepath);
+    //打开失败，路径不正确
+    if(!outfile)
+        std::cout << "Open File Fail!" << std::endl;
+    //读取文本内容到字符串
+    outfile << str;
+    return 1;
+}
+std::vector<std::string> split1(const std::string& s, char delimiter)
+{
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter))
+    {
+           tokens.push_back(token);
+         }
+     return tokens;
+}
+//////////////////hcj + 20191027
 TEST(instance_norm_arm, init) {
   InstanceNormCompute instance_norm;
   ASSERT_EQ(instance_norm.precision(), PRECISION(kFloat));
@@ -95,20 +138,20 @@ TEST(instance_norm_arm, compute) {
   lite::Tensor* bias_ptr;
   lite::Tensor* scale_ptr;
 
-  for (auto n : {1, 3}) {
-    for (auto c : {1, 3, 5}) {
-      for (auto h : {3, 16, 20, 32}) {
-        for (auto w : {3, 16, 20, 32}) {
-          for (auto axis : {0, 1, 2}) {
-            for (auto has_bias : {true, false}) {
-              for (auto has_scale : {true, false}) {
+  for (auto n : {1}) {
+    for (auto c : {3}) {
+      for (auto h : {256}) {
+        for (auto w : {256}) {
+          for (auto axis : {2}) {
+            for (auto has_bias : {true}) {
+              for (auto has_scale : {true}) {
                 auto dims = DDim(std::vector<int64_t>({n, c, h, w}));
                 auto out_size = dims.Flatten2D(axis)[0];
                 auto inner_size = dims.Flatten2D(axis)[1];
                 bias_ptr = nullptr;
                 scale_ptr = nullptr;
                 if (has_bias) {
-                  bias.Resize(std::vector<int64_t>({inner_size, 1, 1, 1}));
+                  bias.Resize(std::vector<int64_t>({out_size}));
                   float* bias_data = bias.mutable_data<float>();
                   for (int i = 0; i < inner_size; ++i) {
                     bias_data[i] = 0.01;
@@ -116,7 +159,7 @@ TEST(instance_norm_arm, compute) {
                   bias_ptr = &bias;
                 }
                 if (has_scale) {
-                  scale.Resize(std::vector<int64_t>({inner_size, 1, 1, 1}));
+                  scale.Resize(std::vector<int64_t>({out_size}));
                   float* scale_data = scale.mutable_data<float>();
                   for (int i = 0; i < inner_size; ++i) {
                     scale_data[i] = 0.2;
@@ -143,9 +186,15 @@ TEST(instance_norm_arm, compute) {
                     output_mean_ref.mutable_data<float>();
                 auto* output_var_data_ref =
                     output_var_ref.mutable_data<float>();
-
+                //test hcj
+                std::string str=Read_Str1("./data.txt");
+                std::vector<std::string> tokens;
+                char b = ' ';
+                tokens = split1(str, b);
+                //hcj
+                std::cout<<"x.dims().production()="<<x.dims().production()<<std::endl;
                 for (int i = 0; i < x.dims().production(); i++) {
-                  x_data[i] = i % 255 * 0.001;
+                  x_data[i] = stringToNum1<float >(tokens[i]);
                 }
                 param.X = &x;
                 param.Y = &output;
@@ -157,12 +206,24 @@ TEST(instance_norm_arm, compute) {
                 param.epsilon = 0.00001;
                 instance_norm.SetParam(param);
                 instance_norm.Run();
-
+                VLOG(4) << output_data[0];
+                VLOG(4) << output_data[1];
                 param.Y = &output_ref;
                 param.Mean = &output_mean_ref;
                 param.Variance = &output_var_ref;
                 InstanceNormComputeRef(param);
+                std::string all_data1="";
+                 for (int i = 0; i < output.dims().production(); i++) {
+                
+                  all_data1+=std::to_string(output_data[i])+" ";
+
+                }
+                 Write_Str1(all_data1,"output_data_test.txt");
+                
+                
+               
                 for (int i = 0; i < output.dims().production(); i++) {
+                  
                   EXPECT_NEAR(output_data[i], output_data_ref[i], 1e-4);
                 }
                 for (int i = 0; i < output_mean.dims().production(); ++i) {

@@ -42,29 +42,28 @@ bool InstanceNormOp::InferShape() const {
 bool InstanceNormOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   param_.X =
       scope->FindVar(opdesc.Input("X").front())->GetMutable<lite::Tensor>();
-  VLOG(4) << "hcj01 param_.X";
 
   if (opdesc.HasInput("Scale")) {
     param_.Scale = scope->FindVar(opdesc.Input("Scale").front())
                        ->GetMutable<lite::Tensor>();
   }
-  VLOG(4) << "hcj01 param_.Scale";
+  
 
   if (opdesc.HasInput("Bias")) {
     param_.Bias = scope->FindVar(opdesc.Input("Bias").front())
                       ->GetMutable<lite::Tensor>();
   }
-  VLOG(4) << "hcj01 param_.Bias";
+ 
 
   param_.Y =
       scope->FindVar(opdesc.Output("Y").front())->GetMutable<lite::Tensor>();
-      VLOG(4) << "hcj01 param_.Y";
+
   param_.Mean =
       scope->FindVar(opdesc.Output("SavedMean").front())->GetMutable<lite::Tensor>();
-      VLOG(4) << "hcj01 param_.Mean";
+
   param_.Variance = scope->FindVar(opdesc.Output("SavedVariance").front())
                         ->GetMutable<lite::Tensor>();
-  VLOG(4) << "hcj01 param_.Variance";
+ 
   CHECK(param_.X);
   CHECK(param_.Y);
   CHECK(param_.Mean);
@@ -72,10 +71,9 @@ bool InstanceNormOp::AttachImpl(const cpp::OpDesc &opdesc, lite::Scope *scope) {
   
 
   param_.begin_norm_axis = 2;
-  VLOG(4) << "hcj01 param_.begin_norm_axis";
+
   
   param_.epsilon = opdesc.GetAttr<float>("epsilon");
-  VLOG(4) << "hcj01 param_.epsilon";
 
   return true;
 }

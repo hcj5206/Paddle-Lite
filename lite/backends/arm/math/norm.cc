@@ -45,7 +45,134 @@ void norm(const float* input,
     }
   }
 }
+void instance_norm_math(const float* x_data,
+                     const float* scale_data,
+                     const float* bias_data,
+                     float* out_data,
+                     float* mean_out,
+                     float* var_out,
+                     float epsilon,
+                     int batch_size,
+                     int feature_size) {
+  int cnt = feature_size >> 4;
+  int remain = feature_size & 0xf;
 
+  auto* scale_ptr = scale_data;
+  auto* bias_ptr = bias_data;
+#pragma omp parallel for
+
+  for (int bi = 0; bi < batch_size; ++bi) {
+    int offset = bi * feature_size;
+    const float* x_ptr = x_data + offset;
+    
+    float mean = 0.f;
+    float variance = 0.f;
+
+    // get mean and variance
+    float32x4_t mean_v = vdupq_n_f32(0);
+    float32x4_t var_v = vdupq_n_f32(0);
+    
+    float scale1 = 1.f;
+    float bias1 = 0.f;
+      if (scale_data) {
+        scale1 = scale_ptr[bi];
+       
+      }
+      if (bias_data) {
+        bias1 = bias_ptr[bi];
+      
+      }
+      // std::cout<<"scale1="<<scale1<<std::endl;
+    for (int oi = 0; oi < cnt; ++oi) {
+      float32x4_t odim1 = vld1q_f32(x_ptr);
+      float32x4_t odim2 = vld1q_f32(x_ptr + 4);
+      float32x4_t odim3 = vld1q_f32(x_ptr + 8);
+      float32x4_t odim4 = vld1q_f32(x_ptr + 12);
+      mean_v = vaddq_f32(mean_v, odim1);
+      mean_v = vaddq_f32(mean_v, odim2);
+      mean_v = vaddq_f32(mean_v, odim3);
+      mean_v = vaddq_f32(mean_v, odim4);
+
+      var_v = vmlaq_f32(var_v, odim1, odim1);
+      var_v = vmlaq_f32(var_v, odim2, odim2);
+      var_v = vmlaq_f32(var_v, odim3, odim3);
+      var_v = vmlaq_f32(var_v, odim4, odim4);
+
+      x_ptr += 16;
+    }
+    mean = vgetq_lane_f32(mean_v, 0) + vgetq_lane_f32(mean_v, 1) +
+           vgetq_lane_f32(mean_v, 2) + vgetq_lane_f32(mean_v, 3);
+    variance = vgetq_lane_f32(var_v, 0) + vgetq_lane_f32(var_v, 1) +
+               vgetq_lane_f32(var_v, 2) + vgetq_lane_f32(var_v, 3);
+    for (int i = 0; i < remain; ++i) {
+      mean += *x_ptr;
+      variance += (*x_ptr) * (*x_ptr);
+      ++x_ptr;
+    }
+    mean /= feature_size;
+    variance = variance / feature_size - mean * mean;
+    mean_out[bi] = mean;
+    var_out[bi] = variance;
+
+    variance = sqrtf(variance + epsilon);
+    float rvar = 1 / variance;
+    // compute norm_out
+    float* out_ptr = out_data + offset;
+    x_ptr = x_data + offset;
+
+
+    float32x4_t vneg = vdupq_n_f32(-1);
+    float32x4_t hcjscale = vdupq_n_f32(scale1);
+    float32x4_t hcjbias = vdupq_n_f32(bias1);
+  
+
+
+
+    for (int oi = 0; oi < cnt; ++oi) {
+      float32x4_t odim1 = vld1q_f32(x_ptr);
+      float32x4_t odim2 = vld1q_f32(x_ptr + 4);
+      float32x4_t odim3 = vld1q_f32(x_ptr + 8);
+      float32x4_t odim4 = vld1q_f32(x_ptr + 12);
+
+      odim1 = vmlaq_n_f32(odim1, vneg, mean);// r=a +b*c
+      odim2 = vmlaq_n_f32(odim2, vneg, mean);
+      odim3 = vmlaq_n_f32(odim3, vneg, mean);
+      odim4 = vmlaq_n_f32(odim4, vneg, mean);
+
+
+      float32x4_t os1 = vmulq_n_f32(hcjscale, rvar);
+      float32x4_t os2 = vmulq_n_f32(hcjscale, rvar);
+      float32x4_t os3 = vmulq_n_f32(hcjscale, rvar);
+      float32x4_t os4 = vmulq_n_f32(hcjscale, rvar);
+
+      odim1 = vmlaq_f32(hcjbias, odim1, os1); // r=a +b*c
+      odim2 = vmlaq_f32(hcjbias, odim2, os2);
+      odim3 = vmlaq_f32(hcjbias, odim3, os3);
+      odim4 = vmlaq_f32(hcjbias, odim4, os4);
+
+      vst1q_f32(out_ptr, odim1);
+      vst1q_f32(out_ptr + 4, odim2);
+      vst1q_f32(out_ptr + 8, odim3);
+      vst1q_f32(out_ptr + 12, odim4);
+
+      x_ptr += 16;
+      out_ptr += 16;
+    }
+    for (int i = 0; i < remain; ++i) {
+      auto out_value = (*x_ptr - mean) / variance;
+      if (scale_data) {
+        out_value = out_value * scale1;
+      }
+      if (bias_data) {
+        out_value = out_value + bias1;
+      }
+      *out_ptr = out_value;
+
+      ++out_ptr;
+      ++x_ptr;
+    }
+  }  // for b
+}
 void matrix_norm_row(const float* x_data,
                      const float* scale_data,
                      const float* bias_data,
@@ -58,7 +185,7 @@ void matrix_norm_row(const float* x_data,
   int cnt = feature_size >> 4;
   int remain = feature_size & 0xf;
 #pragma omp parallel for
-
+ 
   for (int bi = 0; bi < batch_size; ++bi) {
     int offset = bi * feature_size;
     const float* x_ptr = x_data + offset;
@@ -73,7 +200,6 @@ void matrix_norm_row(const float* x_data,
       float32x4_t odim2 = vld1q_f32(x_ptr + 4);
       float32x4_t odim3 = vld1q_f32(x_ptr + 8);
       float32x4_t odim4 = vld1q_f32(x_ptr + 12);
-
       mean_v = vaddq_f32(mean_v, odim1);
       mean_v = vaddq_f32(mean_v, odim2);
       mean_v = vaddq_f32(mean_v, odim3);
@@ -182,6 +308,7 @@ void matrix_norm_row(const float* x_data,
     }
   }  // for bi
 }
+
 
 }  // namespace math
 }  // namespace arm
