@@ -47,6 +47,8 @@ add_kernel(sequence_expand_compute_arm ARM basic SRCS sequence_expand_compute.cc
 add_kernel(im2sequence_compute_arm ARM basic SRCS im2sequence_compute.cc DEPS ${lite_kernel_deps} math_arm)
 add_kernel(sequence_pool_compute_arm ARM basic SRCS sequence_pool_compute.cc DEPS ${lite_kernel_deps} math_arm)
 add_kernel(layer_norm_compute_arm ARM basic SRCS layer_norm_compute.cc DEPS ${lite_kernel_deps} math_arm)
+add_kernel(instance_norm_compute_arm ARM basic SRCS instance_norm_compute.cc DEPS ${lite_kernel_deps} math_arm)
+
 add_kernel(gather_compute_arm ARM basic SRCS gather_compute.cc DEPS ${lite_kernel_deps} math_arm)
 add_kernel(reduce_mean_compute_arm ARM basic SRCS reduce_mean_compute.cc DEPS ${lite_kernel_deps} math_arm)
 add_kernel(stack_compute_arm ARM basic SRCS stack_compute.cc DEPS ${lite_kernel_deps} math_arm)
@@ -101,4 +103,6 @@ lite_cc_test(test_transpose_compute_arm SRCS transpose_compute_test.cc DEPS tran
 lite_cc_test(test_argmax_compute_arm SRCS argmax_compute_test.cc DEPS argmax_compute_arm)
 lite_cc_test(test_axpy_compute_arm SRCS axpy_compute_test.cc DEPS axpy_compute_arm)
 lite_cc_test(test_layer_norm_compute_arm SRCS layer_norm_compute_test.cc DEPS layer_norm_compute_arm)
+lite_cc_test(test_instance_norm_compute_arm SRCS instance_norm_compute_test.cc DEPS instance_norm_compute_arm)
+
 lite_cc_test(test_conv_transpose_compute_arm SRCS conv_transpose_compute_test.cc DEPS conv_transpose_compute_arm)
